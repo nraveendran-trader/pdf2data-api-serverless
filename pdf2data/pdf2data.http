@@ -1,0 +1,6 @@
+@pdf2data_HostAddress = http://localhost:5036
+
+GET {{pdf2data_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
