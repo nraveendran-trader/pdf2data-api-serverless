@@ -11,5 +11,4 @@
 //     bool ExposeApiExplorer { get; }
 //     bool IsLocalEnvironment { get; }
 //     bool IsProductionEnvironment { get; }
-
 // }

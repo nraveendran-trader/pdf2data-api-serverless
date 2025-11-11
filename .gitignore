@@ -345,6 +345,7 @@ samconfig.toml
 .env.development.local
 .env.test.local
 .env.production.local
+*.env
 
 # AWS Lambda package files
 *.zip

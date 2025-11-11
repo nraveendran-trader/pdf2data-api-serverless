@@ -7,14 +7,7 @@
       "launchUrl": "swagger",
       "applicationUrl": "http://localhost:5000",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "DEPARTMENT_NAME": "reg",
-        "PROJECT_NAME": "cg",
-        "COMPONENT_NAME": "pdf2data",
-        "ENV_NAME": "loc",
-        "STAGE_NAME": "loc",
-        "EXPOSE_API_EXPLORER": "true",
-        "LOCAL_DYNAMODB_ENDPOINT": "http://localhost:8000"
+        "ASPNETCORE_ENVIRONMENT": "Development"
       }
     }
   }

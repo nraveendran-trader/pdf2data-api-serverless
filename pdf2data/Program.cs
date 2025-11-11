@@ -9,6 +9,11 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
+if(builder.Environment.IsDevelopment())
+{
+    DotNetEnv.Env.TraversePath().Load(); // Load environment variables from .env file in development
+}
+
 // Configure logging
 builder.Logging.ClearProviders();
 // builder.Logging.AddConsole();
@@ -38,14 +43,14 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
 builder.Services.AddAWSLambdaHosting(LambdaEventSource.RestApi);
 
-if (EnvConfigProvider.IsLocalEnvironment)
+if (ConfigProvider.IsLocalEnvironment)
 {
     //use singleton because the client internally uses HttpClient which is intended to be reused
     builder.Services.AddSingleton<IAmazonDynamoDB>(sp =>
     {
         var config = new AmazonDynamoDBConfig
         {
-            ServiceURL = EnvConfigProvider.LocalDynamoDbEndpoint, // Local DynamoDB endpoint
+            ServiceURL = ConfigProvider.LocalDynamoDbEndpoint, // Local DynamoDB endpoint
             UseHttp = true
         };
         return new AmazonDynamoDBClient(config);
@@ -61,10 +66,10 @@ builder.Services.AddScoped<IDynamoDBContext>(sp =>
     var client = sp.GetRequiredService<IAmazonDynamoDB>();
 
     // Ensure no null values in table name prefix
-    var departmentName = EnvConfigProvider.DepartmentName;
-    var envName = EnvConfigProvider.EnvironmentName;
-    var stageName = EnvConfigProvider.StageName;
-    var projectName = EnvConfigProvider.ProjectName;
+    var departmentName = ConfigProvider.DepartmentName;
+    var envName = ConfigProvider.EnvironmentName;
+    var stageName = ConfigProvider.StageName;
+    var projectName = ConfigProvider.ProjectName;
 
     //format: tbl-dept-env-stage-project-<table>
     string tableNamePrefix = $"tbl-{departmentName}-{envName}-{stageName}-{projectName}-";
@@ -81,7 +86,7 @@ builder.Services.AddScoped<IPdfParsingService, SautinSoftPdfParsingService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (!EnvConfigProvider.ExposeApiExplorer)
+if (!ConfigProvider.ExposeApiExplorer)
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
