@@ -62,7 +62,7 @@ Example (Lambda): lmd-reg-qa-ut1-mw-autoclient
 - rol: iam role
 - pol: policy
 - s3b: s3 bucket
-- ddb: dynamodb table
+- tbl: dynamodb table
 - rds: rds db
 - sgr: security group
 - vpc: vpc

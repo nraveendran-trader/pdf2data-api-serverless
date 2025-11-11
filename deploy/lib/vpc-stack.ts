@@ -17,6 +17,18 @@ export class VpcStack extends cdk.Stack {
     return this._vpc;
   }
 
+  public getVpcByLookup(vpcName: string): ec2.IVpc {
+    const vpcStack: string = `VpcStack-${this.props.departmentName}-${this.props.envName}`;
+    
+    const vpc = ec2.Vpc.fromLookup(this, vpcStack, {
+        tags: {
+            'Name': vpcName,
+        }
+    });
+
+    return vpc;
+  } 
+
   private createVpcAndSubnets() : ec2.Vpc {
     const vpcName: string = `${PREFIXES.VPC}-${this.props.departmentName}-${this.props.envName}`;
 
@@ -53,5 +65,22 @@ export class VpcStack extends cdk.Stack {
 
     return vpc;
   } 
+
+
+  public createVpcEndpoint(vpcEndpointName: string, service: ec2.GatewayVpcEndpointAwsService): ec2.GatewayVpcEndpoint {
+      const vpcEndpoint = this._vpc.addGatewayEndpoint(vpcEndpointName, {  
+          service: service,
+          subnets: [
+              { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+              { subnetType: ec2.SubnetType.PRIVATE_ISOLATED }
+          ]
+      });
+
+      //Apply tags directly to the endpoint
+      cdk.Tags.of(vpcEndpoint).add('Name', vpcEndpointName);
+      cdk.Tags.of(vpcEndpoint).add('resource-type', 'vpc-endpoint');
+
+      return vpcEndpoint; // Return the endpoint
+  }
 
 }
