@@ -9,23 +9,29 @@ public static class LifeTimeExtensions
 
     public static Guid ApplicationInstanceId => _instanceId.Value;
 
-    public static void MapLifeTimeEvents(this WebApplication app)
+    public static async Task DoStartupTasks(this WebApplication app)
     {
-        app.Lifetime.ApplicationStarted.Register(async () =>
-        {
-            var logger = app.Services.GetRequiredService<ILogger<Program>>();
-            logger.LogInformation($"COLD Starting - Insance Id: {ApplicationInstanceId}");
+         var logger = app.Services.GetRequiredService<ILogger<Program>>();
+        logger.LogInformation($"COLD Starting - Insance Id: {ApplicationInstanceId}");
 
+        if(ConfigProvider.IsLocalEnvironment)
+        {
+            logger.LogWarning("Application is running in LOCAL environment.");
+        }else{
+            logger.LogInformation("Application is running in NON-LOCAL environment.");
             await PreloadSsmParametersAsync(logger);
-            EnsureRequiredConfigurationExists(logger);
-        });
+        }
+        
+        EnsureRequiredConfigurationExists(logger);
     }
 
     private static async Task PreloadSsmParametersAsync(ILogger logger)
     {
         try
         {
+            logger.LogInformation($"Start to preload SSM parameters - Insance Id: {ApplicationInstanceId}");
             await ConfigProvider.PreloadSsmParametersAsync();
+            logger.LogInformation($"Finished preloading SSM parameters - Insance Id: {ApplicationInstanceId}");
         }
         catch (Exception ex)
         {
@@ -38,7 +44,9 @@ public static class LifeTimeExtensions
     {
         try
         {
+            logger.LogInformation($"Ensuring required configuration exists - Insance Id: {ApplicationInstanceId}");
             ConfigProvider.EnsureRequiredConfigurationExists();
+            logger.LogInformation($"Finished ensuring required configuration exists - Insance Id: {ApplicationInstanceId}");
         }
         catch (Exception ex)
         {

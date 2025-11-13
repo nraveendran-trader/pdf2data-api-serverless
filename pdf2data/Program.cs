@@ -1,3 +1,4 @@
+using Amazon.BedrockRuntime;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
 using Amazon.DynamoDBv2.Model;
@@ -43,6 +44,26 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
 builder.Services.AddAWSLambdaHosting(LambdaEventSource.RestApi);
 
+// Configure form options for file uploads in Lambda containers
+builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+{
+    options.ValueLengthLimit = int.MaxValue;
+    options.MultipartBodyLengthLimit = 100_000_000; // 100MB
+    options.MultipartHeadersLengthLimit = int.MaxValue;
+    options.BufferBody = true; // Important for Lambda containers
+    options.MemoryBufferThreshold = int.MaxValue;
+    options.MultipartBoundaryLengthLimit = int.MaxValue;
+});
+
+// Configure Kestrel for file uploads (if not in Lambda)
+if (!Environment.GetEnvironmentVariable("AWS_LAMBDA_RUNTIME_API")?.Any() == true)
+{
+    builder.Services.Configure<Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServerOptions>(options =>
+    {
+        options.Limits.MaxRequestBodySize = 100_000_000; // 100MB
+    });
+}
+
 if (ConfigProvider.IsLocalEnvironment)
 {
     //use singleton because the client internally uses HttpClient which is intended to be reused
@@ -80,27 +101,24 @@ builder.Services.AddScoped<IDynamoDBContext>(sp =>
     return dynamoDbBuilder.Build();
 });
 
+builder.Services.AddAWSService<IAmazonBedrockRuntime>(builder.Configuration.GetAWSOptions());
 //add other services and repositories
-builder.Services.AddScoped<IPdfParsingService, SautinSoftPdfParsingService>();
+builder.Services.AddScoped<IPdfParsingService, PdfPigParsingService>();
 
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (!ConfigProvider.ExposeApiExplorer)
+if (ConfigProvider.ExposeApiExplorer)
 {
     app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "PDF2Data API v1");
-        c.RoutePrefix = "swagger"; // Serve Swagger UI at /swagger
-    });
+    app.UseSwaggerUI();
 }
 
 // app.UseHttpsRedirection();
-app.MapLifeTimeEvents(); //defined in LifeTimeEvents.cs
 app.UseAuthorization();
 app.MapHealthChecks("/health");
 app.MapControllers();
 
+await app.DoStartupTasks(); //defined in LifeTimeExtensions.cs
 app.Run();
 

@@ -1,34 +1,58 @@
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
+using pdf2data.Providers;
 using pdf2data.Services;
+using UglyToad.PdfPig;
 
 namespace pdf2data.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
-public class PdfDataController : ControllerBase
+[Route("api/[controller]/v1")]
+public class Pdf2DataController : ControllerBase
 {
-    private const string _apiVersion = "api/pdf2data/v1";
-    private readonly ILogger<PdfDataController> _logger;
+    private readonly ILogger<Pdf2DataController> _logger;
     private readonly IPdfParsingService _pdfParsingService;
 
-    public PdfDataController(ILogger<PdfDataController> logger, IPdfParsingService pdfParsingService)
+    public Pdf2DataController(ILogger<Pdf2DataController> logger, IPdfParsingService pdfParsingService)
     {
         _logger = logger;
         _pdfParsingService = pdfParsingService;
     }
 
-    [HttpPost($"{_apiVersion}/pdf2xml")]
-    public async Task<IActionResult> Pdf2Xml([FromBody] Stream requestStream)
+    [HttpGet("key")]
+    public async Task<IActionResult> GetKey()
     {
         try
         {
-            using var memoryStream = new MemoryStream();
-            await requestStream.CopyToAsync(memoryStream);
-            byte[] pdfBytes = memoryStream.ToArray();
-            // Use the _pdfParsingService to convert PDF to XML
-            string xmlContent = await _pdfParsingService.ConvertPdfToXmlAsync(pdfBytes);
+            return Ok(new { Key = await ConfigProvider.GetPdfFocusKeyAsync(), Timestamp = DateTime.UtcNow });        
+        }
+        catch (System.Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while fetching PDF Focus key");
+            return StatusCode(500, "Internal server error");
+        }
+    }
 
-            return Ok(xmlContent);            
+    [HttpPost("text")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> Pdf2Text(IFormFile file)
+    {
+        try
+        {
+
+            _logger.LogInformation("Received PDF file: {FileName}, Size: {FileSize} bytes", file.FileName, file.Length);
+
+            using (var memoryStream = new MemoryStream())
+            {
+                await file.OpenReadStream().CopyToAsync(memoryStream);
+                byte[] pdfBytes = memoryStream.ToArray();
+                string text = await _pdfParsingService.ConvertPdfToText(pdfBytes);
+
+                _logger.LogInformation("Extracted text length: {TextLength}", text.Length);
+                _logger.LogInformation("Extracted text content: {TextContent}", text);
+                return Ok(text);
+            }
+
         }
         catch (Exception ex)
         {
@@ -36,6 +60,5 @@ public class PdfDataController : ControllerBase
             return StatusCode(500, "Internal server error");
         }
     }
-
 
 }

@@ -17,7 +17,7 @@ public static class ConfigProvider
     };
 
     private static ConcurrentDictionary<string, string> _ssmParamsCache = new();
-    public static string AwsRegion => GetConfigurationValue("AWS_REGION") ?? throw new Exception("AWS_REGION environment variable is not set");
+    public static string AwsRegion => GetConfigurationValue("REGION") ?? throw new Exception("REGION environment variable is not set");
     public static string DepartmentName => GetConfigurationValue("DEPARTMENT_NAME") ?? throw new Exception("DEPARTMENT_NAME environment variable is not set");
     public static string EnvironmentName => GetConfigurationValue("ENV_NAME") ?? throw new Exception("ENV_NAME environment variable is not set");
     public static string StageName => GetConfigurationValue("STAGE_NAME") ?? throw new Exception("STAGE_NAME environment variable is not set");
@@ -36,6 +36,13 @@ public static class ConfigProvider
         }
 
         _ssmParamsCache.TryGetValue(PDF_FOCUS_KEY_PARAM_NAME, out var pdfFocusKey);
+
+        if(string.IsNullOrEmpty(pdfFocusKey))
+        {
+            pdfFocusKey = await GetSsmParameterAsync(PDF_FOCUS_KEY_PARAM_NAME, AwsRegion);
+            _ssmParamsCache.AddOrUpdate(PDF_FOCUS_KEY_PARAM_NAME, pdfFocusKey, (key, oldValue) => pdfFocusKey);
+        }
+
         return pdfFocusKey ?? throw new Exception($"{PDF_FOCUS_KEY_PARAM_NAME} SSM parameter is not cached");
     }
     
@@ -47,7 +54,7 @@ public static class ConfigProvider
         _ = StageName;
         _ = ProjectName;
         _ = ComponentName;
-        _ = LocalDynamoDbEndpoint;
+        // _ = LocalDynamoDbEndpoint; //only for local
         _ = ExposeApiExplorer;
         _ = GetPdfFocusKeyAsync().GetAwaiter().GetResult();
     }
@@ -92,6 +99,6 @@ public static class ConfigProvider
     }
     
     /* 
-        aws ssm put-parameter --name "/reg/dev/dev1/cg/pdf2data/pdf_focus_key" --value "your-license-key-here" --type "SecureString"        
+        aws ssm put-parameter --name "/reg/dv/dv1/cg/pdf2data/pdf_focus_key" --value "your-license-key-here" --type "SecureString"        
     */
 }

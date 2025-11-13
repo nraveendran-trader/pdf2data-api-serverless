@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  pdf2data:
+    build:
+      context: ./pdf2data
+      dockerfile: Dockerfile
+    container_name: pdf2data
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - DEPARTMENT_NAME=reg
+      - PROJECT_NAME=cg
+      - COMPONENT_NAME=pdf2data
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
+      - DYNAMODB_ENDPOINT=${DYNAMODB_ENDPOINT:-http://dynamodb-local:8000}
+    volumes:
+      - ./pdf2data/logs:/app/logs
+      - ./temp-uploads:/tmp/uploads
+    depends_on:
+      - dynamodb-local
+    networks:
+      - pdf2data-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    container_name: dynamodb-local
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-dbPath", "./data"]
+    ports:
+      - "8000:8000"
+    volumes:
+      - dynamodb-data:/home/dynamodblocal/data
+    working_dir: /home/dynamodblocal
+    networks:
+      - pdf2data-network
+    restart: unless-stopped
+
+  aws-cli:
+    image: amazon/aws-cli:latest
+    container_name: aws-cli-setup
+    environment:
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+      - AWS_DEFAULT_REGION=us-east-1
+    volumes:
+      - ./scripts:/scripts
+    depends_on:
+      - dynamodb-local
+    networks:
+      - pdf2data-network
+    command: >
+      sh -c "
+        echo 'Waiting for DynamoDB Local to be ready...' &&
+        sleep 10 &&
+        aws dynamodb create-table \
+          --endpoint-url http://dynamodb-local:8000 \
+          --table-name ProcessingRecords \
+          --attribute-definitions \
+            AttributeName=id,AttributeType=S \
+          --key-schema \
+            AttributeName=id,KeyType=HASH \
+          --provisioned-throughput \
+            ReadCapacityUnits=5,WriteCapacityUnits=5 \
+          --region us-east-1 || echo 'Table might already exist'
+      "
+
+volumes:
+  dynamodb-data:
+    driver: local
+
+networks:
+  pdf2data-network:
+    driver: bridge

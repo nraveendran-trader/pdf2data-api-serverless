@@ -112,7 +112,7 @@ export ENV_NAME="loc"           # or "prod" for production
 export STAGE_NAME="loc"         # or "prod" for production  
 export PROJECT_NAME="cg"
 export COMPONENT_NAME="pdf2data"
-export AWS_REGION="us-east-1"   # or your preferred region
+export REGION="us-east-1"   # or your preferred region
 ```
 
 ## Quick Setup Script

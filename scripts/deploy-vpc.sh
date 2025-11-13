@@ -12,14 +12,20 @@ VPC_STACK_NAME="VpcStack-${DEPARTMENT_NAME}-${ENV_NAME}"
 
 echo "Synthesizing..."
 cdk synth $VPC_STACK_NAME \
-    --app "npx ts-node --prefer-ts-exts bin/deploy-vpc.ts" \
+    --app "npx ts-node --prefer-ts-exts bin/deploy.ts" \
+    --context region=${REGION} \
     --context department=${DEPARTMENT_NAME} \
-    --context env=${ENV_NAME}
+    --context env=${ENV_NAME} \
+    --context stage=${STAGE_NAME} \
+    --context project=${PROJECT_NAME}
 
 echo "Deploying..."
 cdk deploy $VPC_STACK_NAME \
-    --app "npx ts-node --prefer-ts-exts bin/deploy-vpc.ts" \
+    --app "npx ts-node --prefer-ts-exts bin/deploy.ts" \
+    --context region=${REGION} \
     --context department=${DEPARTMENT_NAME} \
-    --context env=${ENV_NAME}
+    --context env=${ENV_NAME} \
+    --context stage=${STAGE_NAME} \
+    --context project=${PROJECT_NAME}
 
 echo "VPC deployment process completed."
