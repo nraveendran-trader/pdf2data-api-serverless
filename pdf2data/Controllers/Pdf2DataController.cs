@@ -7,7 +7,7 @@ using UglyToad.PdfPig;
 namespace pdf2data.Controllers;
 
 [ApiController]
-[Route("api/v1/[controller]")]
+[Route($"api/{ConfigProvider.API_VERSION}/[controller]")]
 public class Pdf2DataController : ControllerBase
 {
     private readonly ILogger<Pdf2DataController> _logger;

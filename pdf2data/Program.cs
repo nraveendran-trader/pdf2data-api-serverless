@@ -17,7 +17,6 @@ if(builder.Environment.IsDevelopment())
     DotNetEnv.Env.TraversePath().Load(); // Load environment variables from .env file in development
 }
 
-
 // Configure logging
 builder.Logging.ClearProviders();
 // builder.Logging.AddConsole();
@@ -35,10 +34,10 @@ builder.Services.AddHealthChecks();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    c.SwaggerDoc(ConfigProvider.API_VERSION, new Microsoft.OpenApi.Models.OpenApiInfo
     {
         Title = "PDF2Data API",
-        Version = "v1",
+        Version = ConfigProvider.API_VERSION,
         Description = "API for extracting data from PDF files"
     });
 
@@ -138,6 +137,7 @@ builder.Services.AddScoped<IDynamoDBContext>(sp =>
 builder.Services.AddAWSService<IAmazonBedrockRuntime>(builder.Configuration.GetAWSOptions());
 //add other services and repositories
 builder.Services.AddScoped<IPdfParsingService, PdfPigParsingService>();
+builder.Services.AddScoped<IAnalysisService, BedrockAnalysisService>();
 
 var app = builder.Build();
 
@@ -148,7 +148,15 @@ app.UseMiddleware<ApiKeyMiddleware>(await ConfigProvider.GetApiKeyAsync());
 if (ConfigProvider.ExposeApiExplorer)
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c => 
+    {
+        string endpointUrl = ConfigProvider.IsLocalEnvironment ? $"/swagger/{ConfigProvider.API_VERSION}/swagger.json" : 
+                                                                $"/{ConfigProvider.StageName}/swagger/{ConfigProvider.API_VERSION}/swagger.json";
+                                                                
+        c.SwaggerEndpoint(endpointUrl, $"PDF2Data API {ConfigProvider.API_VERSION}");
+        c.DocumentTitle = $"PDF2Data API {ConfigProvider.API_VERSION} Documentation";
+        c.RoutePrefix = "swagger"; // Set Swagger UI at the app's root
+    });
 }
 
 // app.UseHttpsRedirection();

@@ -16,13 +16,13 @@ public class ApiKeyMiddleware
     public async Task InvokeAsync(HttpContext context)
     {
         // Skip authentication for health checks and Swagger UI
-        var path = context.Request.Path.Value?.ToLower();
-        if (path != null && (
+        var path = context.Request.Path.Value?.ToLower() ?? string.Empty;
+        if (path == "/" ||
             path.StartsWith("/health") ||
             path.StartsWith("/swagger") ||
             path.StartsWith("/_framework") ||
-            path == "/" ||
-            path == "/favicon.ico"))
+            path.StartsWith("/index.html") ||
+            path == "/favicon.ico")
         {
             await _next(context);
             return;
