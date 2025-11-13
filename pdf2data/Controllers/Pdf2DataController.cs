@@ -7,7 +7,7 @@ using UglyToad.PdfPig;
 namespace pdf2data.Controllers;
 
 [ApiController]
-[Route("api/v1/pdf2data")]
+[Route("api/v1/[controller]")]
 public class Pdf2DataController : ControllerBase
 {
     private readonly ILogger<Pdf2DataController> _logger;
@@ -19,8 +19,8 @@ public class Pdf2DataController : ControllerBase
         _pdfParsingService = pdfParsingService;
     }
 
-    [HttpGet("ssm/key")]
-    public async Task<IActionResult> GetKey()
+    [HttpGet("ssm/key/pdf-focus")]
+    public async Task<IActionResult> GetPdfFocusKey()
     {
         try
         {
@@ -29,6 +29,20 @@ public class Pdf2DataController : ControllerBase
         catch (System.Exception ex)
         {
             _logger.LogError(ex, "Error occurred while fetching PDF Focus key");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    [HttpGet("ssm/key/api")]
+    public async Task<IActionResult> GetApiKey()
+    {
+        try
+        {
+            return Ok(new { Key = await ConfigProvider.GetApiKeyAsync(), Timestamp = DateTime.UtcNow });        
+        }
+        catch (System.Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while fetching API key");
             return StatusCode(500, "Internal server error");
         }
     }

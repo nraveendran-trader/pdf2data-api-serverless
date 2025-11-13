@@ -22,7 +22,7 @@ public static class LifeTimeExtensions
             await PreloadSsmParametersAsync(logger);
         }
         
-        EnsureRequiredConfigurationExists(logger);
+        await EnsureRequiredConfigurationExists(logger);
     }
 
     private static async Task PreloadSsmParametersAsync(ILogger logger)
@@ -40,12 +40,12 @@ public static class LifeTimeExtensions
         }
     }
 
-    private static void EnsureRequiredConfigurationExists(ILogger logger)
+    private static async Task EnsureRequiredConfigurationExists(ILogger logger)
     {
         try
         {
             logger.LogInformation($"Ensuring required configuration exists - Insance Id: {ApplicationInstanceId}");
-            ConfigProvider.EnsureRequiredConfigurationExists();
+            await ConfigProvider.EnsureRequiredConfigurationExistsAsync();
             logger.LogInformation($"Finished ensuring required configuration exists - Insance Id: {ApplicationInstanceId}");
         }
         catch (Exception ex)

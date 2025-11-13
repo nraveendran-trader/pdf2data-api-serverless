@@ -2,7 +2,9 @@ using Amazon.BedrockRuntime;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
 using Amazon.DynamoDBv2.Model;
+using Microsoft.AspNetCore.Http.Features;
 using pdf2data.Extensions;
+using pdf2data.Middleware;
 using pdf2data.Models.Common;
 using pdf2data.Providers;
 using pdf2data.Services;
@@ -14,6 +16,7 @@ if(builder.Environment.IsDevelopment())
 {
     DotNetEnv.Env.TraversePath().Load(); // Load environment variables from .env file in development
 }
+
 
 // Configure logging
 builder.Logging.ClearProviders();
@@ -38,6 +41,32 @@ builder.Services.AddSwaggerGen(c =>
         Version = "v1",
         Description = "API for extracting data from PDF files"
     });
+
+    // ✅ Add API Key security definition
+    c.AddSecurityDefinition("ApiKey", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "X-API-Key",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "API Key needed to access the endpoints. Enter your API key in the field below.",
+        Scheme = "ApiKeyScheme"
+    });
+
+    // ✅ Require API Key globally
+    c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "ApiKey"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
 });
 
 //add aws options
@@ -45,7 +74,7 @@ builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
 builder.Services.AddAWSLambdaHosting(LambdaEventSource.RestApi);
 
 // Configure form options for file uploads in Lambda containers
-builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+builder.Services.Configure<FormOptions>(options =>
 {
     options.ValueLengthLimit = int.MaxValue;
     options.MultipartBodyLengthLimit = 100_000_000; // 100MB
@@ -53,6 +82,11 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(optio
     options.BufferBody = true; // Important for Lambda containers
     options.MemoryBufferThreshold = int.MaxValue;
     options.MultipartBoundaryLengthLimit = int.MaxValue;
+});
+
+builder.Services.Configure<RouteOptions>(options =>
+{
+    options.LowercaseUrls = true; // Enforce lowercase URLs
 });
 
 // Configure Kestrel for file uploads (if not in Lambda)
@@ -106,6 +140,9 @@ builder.Services.AddAWSService<IAmazonBedrockRuntime>(builder.Configuration.GetA
 builder.Services.AddScoped<IPdfParsingService, PdfPigParsingService>();
 
 var app = builder.Build();
+
+
+app.UseMiddleware<ApiKeyMiddleware>(await ConfigProvider.GetApiKeyAsync());
 
 // Configure the HTTP request pipeline.
 if (ConfigProvider.ExposeApiExplorer)

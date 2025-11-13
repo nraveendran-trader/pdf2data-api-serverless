@@ -10,6 +10,7 @@ namespace pdf2data.Providers;
 public static class ConfigProvider
 {
     private const string PDF_FOCUS_KEY_PARAM_NAME = "pdf_focus_key";
+    private const string API_KEY_PARAM_NAME = "api_key";
 
     private static readonly List<string> _ssmParamsToCache = new()
     {
@@ -27,6 +28,26 @@ public static class ConfigProvider
     public static bool ExposeApiExplorer => bool.TryParse(GetConfigurationValue("EXPOSE_API_EXPLORER"), out var result) && result;
     public static bool IsLocalEnvironment => EnvironmentName.Equals("loc", StringComparison.OrdinalIgnoreCase);
     public static bool IsProductionEnvironment => EnvironmentName.Equals("prod", StringComparison.OrdinalIgnoreCase);
+
+
+    public static async Task<string> GetApiKeyAsync()
+    {
+        if (IsLocalEnvironment)
+        {
+            return GetConfigurationValue("API_KEY") ?? throw new Exception("API_KEY environment variable is not set for local environment");
+        }
+
+        _ssmParamsCache.TryGetValue(API_KEY_PARAM_NAME, out var apiKey);
+
+        if(string.IsNullOrEmpty(apiKey))
+        {
+            apiKey = await GetSsmParameterAsync(API_KEY_PARAM_NAME, AwsRegion);
+            _ssmParamsCache.AddOrUpdate(API_KEY_PARAM_NAME, apiKey, (key, oldValue) => apiKey);
+        }
+
+        return apiKey ?? throw new Exception($"{API_KEY_PARAM_NAME} SSM parameter is not cached");
+    }
+
 
     public static async Task<string> GetPdfFocusKeyAsync()
     {
@@ -46,7 +67,7 @@ public static class ConfigProvider
         return pdfFocusKey ?? throw new Exception($"{PDF_FOCUS_KEY_PARAM_NAME} SSM parameter is not cached");
     }
     
-    public static void EnsureRequiredConfigurationExists()
+    public static async Task EnsureRequiredConfigurationExistsAsync()
     {
         // This method can be expanded to check for all required configurations at startup
         _ = DepartmentName;
@@ -56,8 +77,9 @@ public static class ConfigProvider
         _ = ComponentName;
         // _ = LocalDynamoDbEndpoint; //only for local
         _ = ExposeApiExplorer;
-        _ = GetPdfFocusKeyAsync().GetAwaiter().GetResult();
-    }
+        _ = await GetApiKeyAsync();
+        _ = await GetPdfFocusKeyAsync();
+        }
 
     public static async Task PreloadSsmParametersAsync()
     {
@@ -99,6 +121,8 @@ public static class ConfigProvider
     }
     
     /* 
-        aws ssm put-parameter --name "/reg/dv/dv1/cg/pdf2data/pdf_focus_key" --value "your-license-key-here" --type "SecureString"        
+        aws ssm put-parameter --name "/reg/dv/dv1/cg/pdf2data/pdf_focus_key" --value "your-license-key-here" --type "SecureString"
+                
     */
+    
 }
