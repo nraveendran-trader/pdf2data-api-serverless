@@ -7,7 +7,7 @@ using System.Text;
 namespace pdf2data.Controllers;
 
 [ApiController]
-[Route("api/[controller]/v1")]
+[Route("api/v1/bedrock")]
 public class BedrockController : ControllerBase
 {
     private readonly ILogger<BedrockController> _logger;

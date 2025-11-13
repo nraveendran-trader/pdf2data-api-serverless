@@ -2,7 +2,7 @@
 
 #this script deploys the VPC stack using AWS CDK.  Run it from the 'scripts' directory.
 
-set -e # Exit immediately if a command exits with a non-zero status
+set -euo pipefail # Exit immediately if a command exits with a non-zero status
 source ./parameters.sh
 
 echo "Starting to destroy Lambda deployment..."    
@@ -18,6 +18,8 @@ cdk destroy $LAMBDA_STACK_NAME \
     --context env=${ENV_NAME} \
     --context stage=${STAGE_NAME} \
     --context project=${PROJECT_NAME} \
+    --context componentName=${COMPONENT_NAME} \
+    --context componentVersion=${COMPONENT_VERSION} \
     --force
 
 echo "⏳ Waiting for stack deletion to complete..."

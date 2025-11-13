@@ -2,7 +2,7 @@
 
 #this script deploys the VPC stack using AWS CDK.  Run it from the 'scripts' directory.
 
-set -e # Exit immediately if a command exits with a non-zero status
+set -euo pipefail # Exit immediately if a command exits with a non-zero status
 source ./parameters.sh
 
 echo "Starting Data deployment process..."
@@ -17,7 +17,9 @@ cdk synth $DATA_STACK_NAME \
     --context department=${DEPARTMENT_NAME} \
     --context env=${ENV_NAME} \
     --context stage=${STAGE_NAME} \
-    --context project=${PROJECT_NAME}
+    --context project=${PROJECT_NAME} \
+    --context componentName=${COMPONENT_NAME} \
+    --context componentVersion=${COMPONENT_VERSION}
 
 echo "Deploying..."
 cdk deploy $DATA_STACK_NAME \
@@ -26,6 +28,8 @@ cdk deploy $DATA_STACK_NAME \
     --context department=${DEPARTMENT_NAME} \
     --context env=${ENV_NAME} \
     --context stage=${STAGE_NAME} \
-    --context project=${PROJECT_NAME}
+    --context project=${PROJECT_NAME} \
+    --context componentName=${COMPONENT_NAME} \
+    --context componentVersion=${COMPONENT_VERSION}
 
 echo "Data deployment process completed."

@@ -10,4 +10,4 @@ export PROJECT_NAME="cg"
 
 # FOR DOCKER
 export COMPONENT_NAME="pdf2data"
-export COMPONENT_VERSION="1.0.0"
+export COMPONENT_VERSION="v3"

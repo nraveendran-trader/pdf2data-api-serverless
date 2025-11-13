@@ -15,7 +15,9 @@ cdk synth $ECR_STACK_NAME \
     --context department=${DEPARTMENT_NAME} \
     --context env=${ENV_NAME} \
     --context stage=${STAGE_NAME} \
-    --context project=${PROJECT_NAME}
+    --context project=${PROJECT_NAME} \
+    --context componentName=${COMPONENT_NAME} \
+    --context componentVersion=${COMPONENT_VERSION}
 
 echo "Deploying..."
 cdk deploy $ECR_STACK_NAME \
@@ -24,4 +26,6 @@ cdk deploy $ECR_STACK_NAME \
     --context department=${DEPARTMENT_NAME} \
     --context env=${ENV_NAME} \
     --context stage=${STAGE_NAME} \
-    --context project=${PROJECT_NAME}
+    --context project=${PROJECT_NAME} \
+    --context componentName=${COMPONENT_NAME} \
+    --context componentVersion=${COMPONENT_VERSION}

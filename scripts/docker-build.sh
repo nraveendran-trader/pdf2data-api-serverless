@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e # Exit immediately if a command exits with a non-zero status
+set -euo pipefail # Exit immediately if a command exits with a non-zero status
 source ./parameters.sh
 
 echo "Starting Docker build process..."

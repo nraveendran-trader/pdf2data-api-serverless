@@ -7,7 +7,7 @@ using UglyToad.PdfPig;
 namespace pdf2data.Controllers;
 
 [ApiController]
-[Route("api/[controller]/v1")]
+[Route("api/v1/pdf2data")]
 public class Pdf2DataController : ControllerBase
 {
     private readonly ILogger<Pdf2DataController> _logger;
@@ -19,7 +19,7 @@ public class Pdf2DataController : ControllerBase
         _pdfParsingService = pdfParsingService;
     }
 
-    [HttpGet("key")]
+    [HttpGet("ssm/key")]
     public async Task<IActionResult> GetKey()
     {
         try

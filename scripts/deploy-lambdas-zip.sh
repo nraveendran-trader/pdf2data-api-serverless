@@ -5,13 +5,30 @@
 set -euo pipefail # Exit immediately if a command exits with a non-zero status
 source ./parameters.sh
 
-echo "Starting VPC deployment process..."
+echo "Starting Lambda deployment process..."
+echo "Cleaning previous build..."
+
+if test -d "../pdf2data/bin/Release/net8.0/publish"; then
+    echo "Removing existing publish directory..."
+    rm -rf ../pdf2data/bin/Release/net8.0/publish
+fi
+
+echo "Publishing .NET project..."
+dotnet publish ../pdf2data/pdf2data.csproj \
+        --configuration Release \
+        --framework net8.0 \
+        --runtime linux-x64 \
+        --output ../pdf2data/bin/Release/net8.0/publish
+    
 cd ../deploy
 
-VPC_STACK_NAME="VpcStack-${DEPARTMENT_NAME}-${ENV_NAME}"
+echo "Building CDK application..."
+npm run build
+
+LAMBDA_STACK_NAME="LambdaStack-${DEPARTMENT_NAME}-${ENV_NAME}-${STAGE_NAME}-${PROJECT_NAME}"
 
 echo "Synthesizing..."
-cdk synth $VPC_STACK_NAME \
+cdk synth $LAMBDA_STACK_NAME \
     --app "npx ts-node --prefer-ts-exts bin/deploy.ts" \
     --context region=${REGION} \
     --context department=${DEPARTMENT_NAME} \
@@ -21,8 +38,8 @@ cdk synth $VPC_STACK_NAME \
     --context componentName=${COMPONENT_NAME} \
     --context componentVersion=${COMPONENT_VERSION}
 
-echo "Deploying..."
-cdk deploy $VPC_STACK_NAME \
+# echo "Deploying..."
+cdk deploy $LAMBDA_STACK_NAME \
     --app "npx ts-node --prefer-ts-exts bin/deploy.ts" \
     --context region=${REGION} \
     --context department=${DEPARTMENT_NAME} \
@@ -32,4 +49,4 @@ cdk deploy $VPC_STACK_NAME \
     --context componentName=${COMPONENT_NAME} \
     --context componentVersion=${COMPONENT_VERSION}
 
-echo "VPC deployment process completed."
+echo "Lambda deployment process completed."
