@@ -138,6 +138,7 @@ builder.Services.AddAWSService<IAmazonBedrockRuntime>(builder.Configuration.GetA
 //add other services and repositories
 builder.Services.AddScoped<IPdfParsingService, PdfPigParsingService>();
 builder.Services.AddScoped<IAnalysisService, BedrockAnalysisService>();
+builder.Services.AddScoped<IUsageLoggingService, UsageLoggingService>();
 
 var app = builder.Build();
 

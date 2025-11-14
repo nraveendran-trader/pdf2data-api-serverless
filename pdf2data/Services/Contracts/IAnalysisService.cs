@@ -4,6 +4,6 @@ namespace pdf2data.Services;
 
 public interface IAnalysisService
 {
-    Task<string> AnalyzeTextAsync(string prompt);
-    Task<string> AnalyzePdfAsync(MemoryStream stream, string prompt);
+    Task<AnalysisResponse> AnalyzeTextAsync(string prompt);
+    Task<AnalysisResponse> AnalyzePdfAsync(MemoryStream stream, string prompt, string documentName);
 }

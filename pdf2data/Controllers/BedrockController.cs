@@ -6,6 +6,7 @@ using System.Text;
 using pdf2data.Models.Common;
 using pdf2data.Services;
 using pdf2data.Providers;
+using pdf2data.Models.DynamoDb;
 
 namespace pdf2data.Controllers;
 
@@ -15,11 +16,19 @@ public class BedrockController : ControllerBase
 {
     private readonly ILogger<BedrockController> _logger;
     private readonly IAnalysisService _analysisService;
+    private readonly IUsageLoggingService _usageLoggingService;
 
-    public BedrockController(ILogger<BedrockController> logger, IAnalysisService analysisService)
+    public BedrockController(ILogger<BedrockController> logger, IAnalysisService analysisService, IUsageLoggingService usageLoggingService)
     {
         _logger = logger;
         _analysisService = analysisService;
+        _usageLoggingService = usageLoggingService;
+    }
+
+    [HttpGet("usage-logs")]
+    public async Task<List<UsageLog>> GetAllUsageLogsAsync()
+    {
+        return await _usageLoggingService.GetAllUsageLogsAsync();
     }
 
     [HttpPost("text-analysis")]
@@ -36,13 +45,9 @@ public class BedrockController : ControllerBase
             
             var response = await _analysisService.AnalyzeTextAsync(request.Prompt);
 
-            return Ok(new TextAnalysisResponse
-            {
-                Prompt = request.Prompt,
-                ProcessedAt = DateTime.UtcNow,
-                Analysis = response,
-                Status = "Success"
-            });
+
+            await LogUsageAsync(response);
+            return Ok(response);
         }
         catch (Exception ex)
         {
@@ -97,20 +102,16 @@ public class BedrockController : ControllerBase
 
                 _logger.LogInformation("PDF file copied to memory stream. Size: {StreamSize}", memoryStream.Length);
 
-                var response = await _analysisService.AnalyzePdfAsync(memoryStream, request.Prompt);
+                var response = await _analysisService.AnalyzePdfAsync(memoryStream, request.Prompt, request.File.FileName);
 
                 
                 _logger.LogInformation("Successfully analyzed PDF with Bedrock");
 
-                return Ok(new
-                {
-                    ProcessedAt = DateTime.UtcNow,
-                    FileName = request.File.FileName,
-                    Prompt = request.Prompt,
-                    Analysis = response,
-                    Status = "Success"
-                });
-            
+
+                await LogUsageAsync(response);
+
+                return Ok(response);
+        
             }
             
         }
@@ -140,6 +141,31 @@ public class BedrockController : ControllerBase
         }
 
         return true;
+    }
+
+    private async Task LogUsageAsync(AnalysisResponse log)
+    {
+        try
+        {
+            _logger.LogInformation($"Logging usage data for RequestId: {log.RequestId}");
+
+            await _usageLoggingService.LogUsageAsync(new UsageLog
+            {
+                Id = log.RequestId,
+                DateUtc = log.ProcessedAtUtc,
+                Prompt = log.Prompt ?? string.Empty,
+                Response = log.Response,
+                InputTokens = log.InputTokens,
+                OutputTokens = log.OutputTokens
+            });
+
+            _logger.LogInformation($"Usage data logged successfully for RequestId: {log.RequestId}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error while logging usage data for RequestId: {RequestId}", log.RequestId);
+            throw;
+        }
     }
 }
 

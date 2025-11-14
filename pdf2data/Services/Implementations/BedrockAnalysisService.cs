@@ -11,6 +11,7 @@ public class BedrockAnalysisService : IAnalysisService
 {
     private readonly IAmazonBedrockRuntime _bedrockClient;
     private readonly ILogger<BedrockAnalysisService> _logger;
+
     
     public BedrockAnalysisService(IAmazonBedrockRuntime bedrockClient, ILogger<BedrockAnalysisService> logger)
     {
@@ -18,7 +19,7 @@ public class BedrockAnalysisService : IAnalysisService
         _logger = logger;
     }
 
-    public async Task<string> AnalyzePdfAsync(MemoryStream stream, string prompt)
+    public async Task<AnalysisResponse> AnalyzePdfAsync(MemoryStream stream, string prompt, string documentName)
     {
         try
         {
@@ -27,7 +28,7 @@ public class BedrockAnalysisService : IAnalysisService
 
             _logger.LogInformation($"Processing PDF analysis with Bedrock. Prompt: {prompt}");
 
-            var bedrockResponse = await InvokeBedrockModelWithPdf(stream, prompt);
+            var bedrockResponse = await InvokeBedrockModelWithPdf(stream, prompt, documentName);
 
             _logger.LogInformation("Successfully analyzed PDF with Bedrock");
 
@@ -46,7 +47,7 @@ public class BedrockAnalysisService : IAnalysisService
         }
     }
 
-    public async Task<string> AnalyzeTextAsync(string prompt)
+    public async Task<AnalysisResponse> AnalyzeTextAsync(string prompt)
     {
         try
         {
@@ -75,7 +76,7 @@ public class BedrockAnalysisService : IAnalysisService
         }
     }
 
-    private async Task<string> InvokeBedrockModelForText(string prompt)
+    private async Task<AnalysisResponse> InvokeBedrockModelForText(string prompt)
     {
         // Using Claude 3 Sonnet model for text analysis
         const string modelId = "anthropic.claude-3-sonnet-20240229-v1:0";
@@ -107,7 +108,9 @@ public class BedrockAnalysisService : IAnalysisService
 
         _logger.LogInformation("Invoking Bedrock model for text analysis: {ModelId}", modelId);
 
+    
         var response = await _bedrockClient.InvokeModelAsync(invokeRequest);
+        
 
         using var reader = new StreamReader(response.Body);
         var responseBody = await reader.ReadToEndAsync();
@@ -116,6 +119,27 @@ public class BedrockAnalysisService : IAnalysisService
 
         // Parse the response
         var responseJson = JsonSerializer.Deserialize<JsonElement>(responseBody);
+
+        var analysisResponse = new AnalysisResponse 
+        { 
+            RequestId = Guid.NewGuid().ToString(), 
+            ProcessedAtUtc = DateTime.UtcNow, 
+            Prompt = prompt 
+        };
+
+        if (responseJson.TryGetProperty("usage", out var usageElement))
+        {
+            var inputTokens = usageElement.TryGetProperty("input_tokens", out var inputElement) ? inputElement.GetInt32() : 0;
+            var outputTokens = usageElement.TryGetProperty("output_tokens", out var outputElement) ? outputElement.GetInt32() : 0;
+            var totalTokens = inputTokens + outputTokens;
+
+            _logger.LogInformation("Token Usage - Model: {ModelId}, Input: {InputTokens}, Output: {OutputTokens}, Total: {TotalTokens}", 
+                modelId, inputTokens, outputTokens, totalTokens);
+
+            analysisResponse.InputTokens = inputTokens;
+            analysisResponse.OutputTokens = outputTokens;
+        }
+
         
         if (responseJson.TryGetProperty("content", out var contentArray) && 
             contentArray.ValueKind == JsonValueKind.Array &&
@@ -124,18 +148,19 @@ public class BedrockAnalysisService : IAnalysisService
             var firstContent = contentArray[0];
             if (firstContent.TryGetProperty("text", out var textElement))
             {
-                return textElement.GetString() ?? "No analysis text received";
+                analysisResponse.Response = textElement.GetString();
             }
         }
 
-        return responseBody; // Return raw response if parsing fails
+        return analysisResponse; // Return the populated AnalysisResponse object
     }
 
 
-    private async Task<string> InvokeBedrockModelWithPdf(MemoryStream pdfStream, string prompt)
+    private async Task<AnalysisResponse> InvokeBedrockModelWithPdf(MemoryStream pdfStream, string prompt, string documentName   )
     {
         const string modelId = "anthropic.claude-3-haiku-20240307-v1:0";
         pdfStream.Position = 0;
+        string cleanedUpDocumentName = Path.GetFileNameWithoutExtension(string.IsNullOrWhiteSpace(documentName) ? "document" : documentName);
 
         try 
         {
@@ -154,7 +179,7 @@ public class BedrockAnalysisService : IAnalysisService
                             {
                                 Document = new DocumentBlock
                                 {
-                                    Name = "document",
+                                    Name = cleanedUpDocumentName,
                                     Format = DocumentFormat.Pdf, // Use proper enum
                                     Source = new DocumentSource 
                                     { 
@@ -176,6 +201,14 @@ public class BedrockAnalysisService : IAnalysisService
             _logger.LogInformation("Invoking Bedrock ConverseAsync with PDF: {ModelId}", modelId);
 
             var response = await _bedrockClient.ConverseAsync(request);
+            
+            var analysisResponse = new AnalysisResponse 
+            { 
+                RequestId = Guid.NewGuid().ToString(), 
+                ProcessedAtUtc = DateTime.UtcNow, 
+                Prompt = prompt 
+            };
+
 
             // Extract text from response
             var result = new StringBuilder();
@@ -190,13 +223,13 @@ public class BedrockAnalysisService : IAnalysisService
                 }
             }
 
-            var finalResult = result.ToString();
-            if (string.IsNullOrWhiteSpace(finalResult))
-            {
-                return "No analysis text received from Bedrock";
-            }
+            analysisResponse.Response = result.ToString().Trim();
+            analysisResponse.InputTokens = response.Usage?.InputTokens ?? 0;
+            analysisResponse.OutputTokens = response.Usage?.OutputTokens ?? 0;
+            analysisResponse.AttachmentName = documentName;
 
-            return finalResult.Trim();
+
+            return analysisResponse;
         }
         catch (Exception ex)
         {
