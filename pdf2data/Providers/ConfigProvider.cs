@@ -9,7 +9,7 @@ namespace pdf2data.Providers;
 
 public static class ConfigProvider
 {
-    public const string API_VERSION = "v7.4";
+    public const string API_VERSION = "v7.9";
     private const string PDF_FOCUS_KEY_PARAM_NAME = "pdf_focus_key";
     private const string API_KEY_PARAM_NAME = "api_key";
 
